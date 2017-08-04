@@ -31,11 +31,21 @@ def g_create():
     filters = []
     ksize = [5] # gabor尺度，6个
     lamda = np.pi/2.0 #波长
-    for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
-        for K in range(len(ksize)): 
-            kern = cv2.getGaborKernel((ksize[K], ksize[K]), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
-            kern /= 1.5*kern.sum()
-            filters.append(kern)
+    for theta in [0,np.pi/2]:
+        kern = cv2.getGaborKernel((ksize[0], ksize[0]), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
+        #kern /= 1.5*kern.sum()
+        filters.append(kern)
+        
+        del kern
+        kern = cv2.getGaborKernel((ksize[0], ksize[0]), 1.0, theta, lamda, 0.5, np.pi/2, ktype=cv2.CV_32F)
+        #kern /= 1.5*kern.sum()
+        filters.append(kern)
+        
+#    for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
+#        for K in range(len(ksize)): 
+#            kern = cv2.getGaborKernel((ksize[K], ksize[K]), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
+#            kern /= 1.5*kern.sum()
+#            filters.append(kern)
     return [[filters[0],filters[1]],[filters[2],filters[3]]]
     
 #########################
@@ -64,7 +74,7 @@ def g_trans(gray, gs):
         A12 = gfilter(gray_sub, gs[0][1])
         A21 = gfilter(gray_sub, gs[1][0])
         A22 = gfilter(gray_sub, gs[1][1])
-        print("gray_shape=[{},{}]".format(A11.shape[0],A11.shape[1]))
+        #print("gray_shape=[{},{}]".format(A11.shape[0],A11.shape[1]))
         
         w = gray_sub.shape[1]
         h = gray_sub.shape[0]
@@ -119,21 +129,25 @@ def pool_max(g_tree):
             
         for i in range(1,h-1,2):
             for k in range(1,w-1,2):
-                A11[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[0][0][(i-1):(i+1),(k-1):(k+1)])
+                A11[int((i-1)/2)][int((k-1)/2)] = g_tree[0][0][i][k] #np.amax(g_tree[0][0][(i-1):(i+1),(k-1):(k+1)])
+                #A11[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[0][0][(i-1):(i+1),(k-1):(k+1)])
                     
         for i in range(1,h-1,2):
             for k in range(1,w-1,2):
-                A12[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[0][1][(i-1):(i+1),(k-1):(k+1)])
+                A12[int((i-1)/2)][int((k-1)/2)] = g_tree[0][1][i][k] #np.amax(g_tree[0][1][(i-1):(i+1),(k-1):(k+1)])
+                #A12[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[0][1][(i-1):(i+1),(k-1):(k+1)])
         
         for i in range(1,h-1,2):
             for k in range(1,w-1,2):
-                A21[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[1][0][(i-1):(i+1),(k-1):(k+1)])
+                A21[int((i-1)/2)][int((k-1)/2)] = g_tree[1][0][i][k] #np.amax(g_tree[1][0][(i-1):(i+1),(k-1):(k+1)])
+                #A21[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[1][0][(i-1):(i+1),(k-1):(k+1)])
                     
         for i in range(1,h-1,2):
             for k in range(1,w-1,2):
-                A22[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[1][1][(i-1):(i+1),(k-1):(k+1)])
+                A22[int((i-1)/2)][int((k-1)/2)] = g_tree[1][1][i][k] #np.amax(g_tree[1][1][(i-1):(i+1),(k-1):(k+1)])
+                #A22[int((i-1)/2)][int((k-1)/2)] = np.amax(g_tree[1][1][(i-1):(i+1),(k-1):(k+1)])
         
-        print("pool_size=[{},{}]".format(A11.shape[0],A11.shape[1]))
+        #print("pool_size=[{},{}]".format(A11.shape[0],A11.shape[1]))
         
         res = [[A11,A12],[A21,A22]]    
                 
@@ -150,6 +164,7 @@ imgW = img.shape[1]
 imgH = img.shape[0]
 
 stride = 2
+np.set_printoptions(threshold = 1e6)
 
 gs = g_create()
 
@@ -161,21 +176,26 @@ pool = pool_max(conv)
 del conv
 conv = g_trans(pool,gs)
 del pool
+
+#disp = merger(conv)
+#print(disp)
+#del disp
+
 print("2")
 
-## 3
-#pool = pool_max(conv)
-#del conv
-#conv = g_trans(pool,gs)
-#del pool
-#print("3")
-#
-##4
-#pool = pool_max(conv)
-#del conv
-#conv = g_trans(pool,gs)
-#del pool
-#print("4")
+# 3
+pool = pool_max(conv)
+del conv
+conv = g_trans(pool,gs)
+del pool
+print("3")
+
+#4
+pool = pool_max(conv)
+del conv
+conv = g_trans(pool,gs)
+del pool
+print("4")
 #
 ##5
 #pool = pool_max(conv)
@@ -194,6 +214,6 @@ print("2")
 
 disp = merger(conv)
 print(disp)
-plt.imshow(disp)
+#plt.imshow(disp)
 
-plt.show()
+#plt.show()
