@@ -29,7 +29,7 @@ def merger(g_tree):
 #########################
 def g_create():
     filters = []
-    ksize = [5] # gabor尺度，6个
+    ksize = [9] # gabor尺度，6个
     lamda = np.pi/2.0 #波长
 #    for theta in [0,np.pi/2]:
 #        kern = cv2.getGaborKernel((ksize[0], ksize[0]), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
@@ -80,7 +80,8 @@ def g_trans(gray, gs):
         w = gray_sub.shape[1]
         h = gray_sub.shape[0]
         
-        g_tree = [[A11[2:(h-2),2:(w-2)],A12[2:(h-2),2:(w-2)]],[A21[2:(h-2),2:(w-2)],A22[2:(h-2),2:(w-2)]]]
+        #g_tree = [[A11[2:(h-2),2:(w-2)],A12[2:(h-2),2:(w-2)]],[A21[2:(h-2),2:(w-2)],A22[2:(h-2),2:(w-2)]]]
+        g_tree = [[A11,A12],[A21,A22]]
     else:
         A11 = g_trans(gray[0][0],gs)
         A12 = g_trans(gray[0][1],gs)
@@ -88,27 +89,26 @@ def g_trans(gray, gs):
         A22 = g_trans(gray[1][1],gs)
         
         g_tree = [[A11,A12],[A21,A22]]
-#    if type(gray[0][0]) == list:
-#        A11 = g_trans(gray[0][0],gs)
-#        A12 = g_trans(gray[0][1],gs)
-#        A21 = g_trans(gray[1][0],gs)
-#        A22 = g_trans(gray[1][1],gs)
-#        g_tree = [[A11,A12],[A21,A22]]
-#    else:
-#        #grayW = gray[0].shape[1]
-#        #grayH = gray[0].shape[0]
-#        #gray_sub = gray[int(w/2):(grayH-int(w/2)),int(w/2):(grayW-int(w/2))]
-#        gray_sub = gray
-#        A11 = gfilter(gray_sub, gs[0][0])
-#        A12 = gfilter(gray_sub, gs[0][1])
-#        A21 = gfilter(gray_sub, gs[1][0])
-#        A22 = gfilter(gray_sub, gs[1][1])
-#        g_tree = [[A11,A12],[A21,A22]]
-
     return g_tree
-    
+
+#########################
+def create_pool_kern():
+    filters = []
+    ksize = [3] # gabor尺度，6个
+    lamda = np.pi/2.0 #波长
+
+    for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
+        for K in range(len(ksize)): 
+            kern = cv2.getGaborKernel((max(ksize), max(ksize)), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
+            kern /= 1.5*kern.sum()
+            filters.append(kern)      
+            
+    return filters   
+        
 #########################
 # g_tree = [[,],[,]]
+g_pool_kern = create_pool_kern()
+
 def pool_max(g_tree):
     res = []
     
@@ -128,13 +128,10 @@ def pool_max(g_tree):
         A21 = np.zeros((int((h-3)/2+1),int((w-3)/2+1)),dtype=np.uint8)
         A22 = np.zeros((int((h-3)/2+1),int((w-3)/2+1)),dtype=np.uint8)
         
-        gx = np.array([[0.25,0.5,0.25],[0.5,1,0.5],[0.25,0.5,0.25]])
-        gx /= gx.sum()
-        
-        B11 = gfilter(g_tree[0][0], gx)
-        B12 = gfilter(g_tree[0][1], gx)
-        B21 = gfilter(g_tree[1][0], gx)
-        B22 = gfilter(g_tree[1][1], gx)
+        B11 = gfilter(g_tree[0][0], g_pool_kern[0])
+        B12 = gfilter(g_tree[0][1], g_pool_kern[1])
+        B21 = gfilter(g_tree[1][0], g_pool_kern[2])
+        B22 = gfilter(g_tree[1][1], g_pool_kern[3])
         
             
         for i in range(1,h-1,2):
@@ -185,30 +182,31 @@ gs = g_create()
 # 1
 conv = g_trans(gray,gs)
 
-plt.figure(1)
-plt.subplot(2,2,1)
-plt.imshow(conv[0][0])
-plt.subplot(2,2,2)
-plt.imshow(conv[0][1])
-plt.subplot(2,2,3)
-plt.imshow(conv[1][0])
-plt.subplot(2,2,4)
-plt.imshow(conv[1][1])
-
 # 2
 pool = pool_max(conv)
 del conv
-conv = g_trans(pool,gs)
-del pool
-print("2")
 
+plt.figure(1)
+plt.subplot(2,2,1)
+plt.imshow(pool[0][0])
+plt.subplot(2,2,2)
+plt.imshow(pool[0][1])
+plt.subplot(2,2,3)
+plt.imshow(pool[1][0])
+plt.subplot(2,2,4)
+plt.imshow(pool[1][1])
 
-# 3
-pool = pool_max(conv)
-del conv
-conv = g_trans(pool,gs)
-del pool
-print("3")
+##conv = g_trans(pool,gs)
+#del pool
+#print("2")
+#
+#
+## 3
+#pool = pool_max(conv)
+#del conv
+#conv = g_trans(pool,gs)
+#del pool
+#print("3")
 
 ##4
 #pool = pool_max(conv)
@@ -233,8 +231,8 @@ print("3")
 #print("6")
 
 
-disp = merger(conv)
-print(disp)
+#disp = merger(conv)
+#print(disp)
 #plt.imshow(disp)
 
 plt.show()
