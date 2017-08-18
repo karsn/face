@@ -107,14 +107,14 @@ def g_trans(gray, gs):
 #########################
 def create_pool_kern():
     filters = []
-    ksize = [3] # gabor尺度，6个
+    ksize = [5] # gabor尺度，6个
     lamda = np.pi/2.0 #波长
 
     for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
         for K in range(len(ksize)): 
             kern = cv2.getGaborKernel((max(ksize), max(ksize)), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
-            kern /= kern.sum()
-            kern -= kern.sum()
+            kern /= np.fabs(kern).sum()
+            kern -= kern.sum()/(kern.shape[0]*kern.shape[1])
             filters.append(kern)      
             
     return filters   
@@ -142,11 +142,23 @@ def pool_max(g_tree):
         A21 = np.zeros((int((h-3)/2+1),int((w-3)/2+1)),dtype=np.uint8)
         A22 = np.zeros((int((h-3)/2+1),int((w-3)/2+1)),dtype=np.uint8)
         
-        B11 = gfilter(g_tree[0][0], g_pool_kern[0])
-        B12 = gfilter(g_tree[0][1], g_pool_kern[1])
-        B21 = gfilter(g_tree[1][0], g_pool_kern[2])
-        B22 = gfilter(g_tree[1][1], g_pool_kern[3])
+        B11 = cv2.filter2D(g_tree[0][0], -1, g_pool_kern[0])
+        B12 = cv2.filter2D(g_tree[0][1], -1, g_pool_kern[1])
+        B21 = cv2.filter2D(g_tree[1][0], -1, g_pool_kern[2])
+        B22 = cv2.filter2D(g_tree[1][1], -1, g_pool_kern[3])
         
+        accum = np.zeros_like(B11)
+        np.fmax(accum, B11, B11)
+        np.fmax(accum, B12, B12)
+        np.fmax(accum, B21, B21)
+        np.fmax(accum, B22, B22)
+        
+        accum = np.ones_like(B11)
+        accum *= 255
+        np.fmin(accum, B11, B11)
+        np.fmin(accum, B12, B12)
+        np.fmin(accum, B21, B21)
+        np.fmin(accum, B22, B22)
             
         for i in range(1,h-1,2):
             for k in range(1,w-1,2):
