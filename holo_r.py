@@ -25,30 +25,43 @@ def merger(g_tree):
         res = np.vstack((np.hstack((g_tree[0][0],g_tree[0][1])),np.hstack((g_tree[1][0],g_tree[1][1]))))
     return res
 
+# rotate(): rotate image  
+# return: rotated image object  
+def rotate(  
+    img,  #image matrix  
+    angle #angle of rotation  
+    ):  
+      
+    height = img.shape[0]  
+    width = img.shape[1]  
+      
+    if angle%180 == 0:  
+        scale = 1  
+    elif angle%90 == 0:  
+        scale = float(max(height, width))/min(height, width)  
+    else:  
+        scale = np.sqrt(pow(height,2)+pow(width,2))/min(height, width)  
+      
+    #print 'scale %f\n' %scale  
+          
+    rotateMat = cv2.getRotationMatrix2D((width/2, height/2), angle, scale)  
+    rotateImg = cv2.warpAffine(img, rotateMat, (width, height))  
+    #cv2.imshow('rotateImg',rotateImg)  
+    #cv2.waitKey(0)  
+    #print("Angle[{}].size=[{},{}]".format(angle,rotateImg.shape[0],rotateImg.shape[1]))
+      
+    return rotateImg #rotated image  
 
 #########################
 def g_create():
-    filters = []
-    ksize = [11] # gabor尺度，6个
-    lamda = np.pi/5 #波长
-
-    for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
-        for K in range(len(ksize)): 
-            kern = cv2.getGaborKernel((ksize[K], ksize[K]), 1.0, theta, lamda, 0.5, 0, ktype=cv2.CV_32F)
-            kern /= np.fabs(kern).sum()
-            kern -= kern.sum()/(kern.shape[0]*kern.shape[1])
-            #print(kern.sum())
-            filters.append(kern)
-        
-#    for theta in np.arange(0, np.pi, np.pi / 4): #gabor方向，0°，45°，90°，135°，共四个
-#        for K in range(len(ksize)): 
-#            kern = cv2.getGaborKernel((ksize[K], ksize[K]), 1.0, theta, lamda, 0.5, np.pi/2, ktype=cv2.CV_32F)
-#            kern /= np.fabs(kern).sum()
-#            kern -= kern.sum()
-#            #print(kern.sum())
-#            filters.append(kern)      
-            
-    return [[filters[0],filters[1]],[filters[2],filters[3]]]
+    ksize = 9 # gabor尺度，6个
+    lamda = np.pi/2 #波长
+    kern = cv2.getGaborKernel((ksize, ksize), 1.0, 0, lamda, 0.5, 0, ktype=cv2.CV_32F)
+    kern /= np.fabs(kern).sum()
+    print(kern.sum())
+    #kern -= kern.sum()
+    
+    return kern
     
 #########################
 def gfilter(gray, g):
@@ -64,11 +77,9 @@ def gfilter(gray, g):
 #    return [[A11,A12],[A21,A22]]
     #return cv2.filter2D(gray, cv2.CV_8UC3, g)
     
-    accum = np.ones_like(gray)
-    accum *= 32
+    accum = np.zeros_like(gray)
     fimg = cv2.filter2D(gray, -1, g)
-    fimg = np.fabs(fimg)
-    np.fmin(accum, fimg, accum)
+    np.maximum(accum, fimg, accum)
     return accum
     
 #########################
@@ -79,16 +90,16 @@ def g_trans(gray, gs):
 
     if type(gray) != list:
         gray_sub = gray
-        A11 = gfilter(gray_sub, gs[0][0])
-        A12 = gfilter(gray_sub, gs[0][1])
-        A21 = gfilter(gray_sub, gs[1][0])
-        A22 = gfilter(gray_sub, gs[1][1])
+        A11 = gfilter(gray_sub, gs)
+        A12 = gfilter(rotate(gray_sub,45), gs)
+        A21 = gfilter(rotate(gray_sub,90), gs)
+        A22 = gfilter(rotate(gray_sub,135), gs)
         #print("gray_shape=[{},{}]".format(A11.shape[0],A11.shape[1]))
         
-        #A11 = np.fabs(A11)
-        #A12 = np.fabs(A12)
-        #A21 = np.fabs(A21)
-        #A22 = np.fabs(A22)
+        A11 = np.fabs(A11)
+        A12 = np.fabs(A12)
+        A21 = np.fabs(A21)
+        A22 = np.fabs(A22)
         
         w = gray_sub.shape[1]
         h = gray_sub.shape[0]
@@ -260,4 +271,4 @@ plt.imshow(conv[1][1],cmap="gray")
 #print(disp)
 #plt.imshow(disp)
 
-plt.show()
+#plt.show()
